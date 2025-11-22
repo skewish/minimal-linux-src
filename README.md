@@ -1,2 +1,1 @@
-# minimal-linux-src
-minimal linux src
+minimal-linux-src is a simple recipe to create a minimal linux system from individual source code (rather than busybox).  its intended purpose is to experience the basics of compilation, and system initiation.  once complete, you should get a prompt and be able to execute binaries.  it's very easy and fun, just follow the steps.
