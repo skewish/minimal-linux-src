@@ -1,0 +1,149 @@
+minimal-linux-src
+
+1. parent system pre-build setup (fyi)
+
+-64-bit debian linux on /dev/sda1 (newest release)
+-8 GB build partition (ex. /dev/sda8)
+-typical swap partition (ex. /dev/sda5)
+-grub on mbr (un-comment GRUB_DISABLE_OS_PROBER=false in /etc/default/grub)
+-internet connection
+
+2. within the parent system (debian) open a terminal & become superuser
+
+~# su -
+
+3. install a compiler for the parent system (if not already present)
+
+~# apt install build-essential pkg-config
+~# apt install autoconf bison flex gawk libtool python-is-python3 rsync
+~# apt install libelf-dev libncurses-dev libsqlite3-dev libssl-dev
+
+4. create & mount a filesystem on the build partition (/dev/sda8)
+
+~# mkdir /mnt/sda8
+~# mkfs.ext4 /dev/sda8
+~# mount -t ext4 /dev/sda8 /mnt/sda8
+
+5. add directories to /mnt/sda8 (this becomes the new root directory)
+
+~# cd /mnt/sda8/
+~# mkdir -p {boot,dev,etc/init.d,proc,run,sys,tmp,usr/lib}
+
+6. download & unpack the following source code into /dev/sda8/tmp
+
+https://kernel.org/pub/linux/kernel/ (newest release) --> /mnt/sda8/tmp
+https://ftp.gnu.org/gnu/glibc/ (newest release) --> /mnt/sda8/tmp
+https://ftp.gnu.org/gnu/ncurses/ (newest release) --> /mnt/sda8/tmp
+https://github.com/besser82/libxcrypt/ (newest release) --> /mnt/sda8/tmp
+https://ftp.gnu.org/gnu/bash/ (newest release) --> /mnt/sda8/tmp
+https://kernel.org/pub/linux/utils/util-linux/ (newest release) --> /mnt/sda8/tmp
+https://github.com/skewish/minimal-init-new/ (newest release) --> /mnt/sda8/tmp
+
+tar -x -f all files, delete archives & chown to root
+~# chown -R 0:0 /mnt/sda8
+
+7. compile & install a monolithic kernel (rec. disable DRM)
+	
+~# cd /mnt/sda8/tmp/linux*/
+~# make clean
+~# make defconfig
+~# make menuconfig (disable loadable modules & DRM support)
+~# make
+~# make INSTALL_PATH=/mnt/sda8/boot install
+~# make INSTALL_HDR_PATH=/mnt/sda8/usr headers_install
+~# cd /mnt/sda8/; ln -f -s boot/vmlinuz* vmlinuz
+
+8. compile & install glibc
+
+~# cd /mnt/sda8/tmp/
+~# mkdir -p build/glibc; cd build/glibc/
+~# ../../glibc*/configure --prefix=/usr --with-headers=/mnt/sda8/usr/include
+~# make
+~# make DESTDIR=/mnt/sda8 install
+
+9. compile & install libxcrypt
+
+~# cd /mnt/sda8/tmp/libxcrypt*/
+~# ./configure --prefix=/usr --exec-prefix=/
+~# make
+~# make DESTDIR=/mnt/sda8 install
+
+10. compile & install ncurses
+
+~# cd /mnt/sda8/tmp/ncurses*/
+~# ./configure --prefix=/usr --exec-prefix=/ --disable-widec --with-termlib --with-shared --with-versioned-syms
+~# make
+~# make DESTDIR=/mnt/sda8 install
+
+11. compile & install bash
+
+~# cd /mnt/sda8/tmp/bash*/
+~# ./configure --prefix=/usr --exec-prefix=/ --with-curses
+~# make
+~# make DESTDIR=/mnt/sda8 install
+~# cd /mnt/sda8/bin; ln -f -s bash sh
+
+12. compile & install util-linux
+
+~# cd /mnt/sda8/tmp/util-linux*/
+~# ./configure --prefix=/usr --exec-prefix=/ --enable-sulogin
+~# make
+~# make DESTDIR=/mnt/sda8 install
+
+13. compile & install minimal-init-new
+
+~# cd /mnt/sda8/tmp/minimal-init-new*/
+~# gcc -static -o init minimal-init-new.c
+~# cp -p init /mnt/sda8/sbin
+
+14. update a few links
+
+~# cd /mnt/sda8/etc/; ln -f -s ../proc/mounts mtab
+~# chroot /mnt/sda8 ldconfig
+
+15. add /mnt/sda8/etc/init.d/rcS
+
+~# cat > /mnt/sda8/etc/init.d/rcS << 'done'
+#!/bin/sh
+dmesg -n 1
+mount -a -v
+mount -o remount,rw /
+swapon -a -v
+export PS1='\w\$ '
+sulogin
+done
+~# chmod 0755 /mnt/sda8/etc/init.d/rcS
+
+16. add /mnt/sda8/etc/fstab
+
+~# cat > /mnt/sda8/etc/fstab << 'done'
+proc /proc proc defaults 0 0
+sysfs /sys sysfs defaults 0 0
+tmpfs /run tmpfs defaults 0 0
+/dev/sda8 / ext4 defaults 0 1
+/dev/sda5 none swap sw 0 0
+done
+
+17. add /mnt/sda8/etc/os-release
+
+~# cat > /mnt/sda8/etc/os-release << 'done'
+NAME="minimal-linux-src"
+VERSION="v2"
+HOME_URL="https://github.com/skewish"
+done
+
+18. add /mnt/sda8/etc/passwd (rec. set password later)
+
+~# cat > /mnt/sda8/etc/passwd << 'done'
+root::0:0::/:/bin/bash
+done
+
+19. update grub (rec. password protect grub menu)
+
+~# cd /
+~# umount /dev/sda8
+~# grub-install /dev/sda
+~# update-grub
+
+20. reboot (at grub menu select minimal-linux-src)
+
