@@ -29,7 +29,7 @@ minimal-linux-src
 ~# cd /mnt/sda8/
 ~# mkdir -p {boot,dev,etc/init.d,proc,run,sys,tmp,usr/lib}
 
-6. download & unpack the following source code into /dev/sda8/tmp
+6. download & unpack the following source code into /mnt/sda8/tmp
 
 https://kernel.org/pub/linux/kernel/ (newest release) --> /mnt/sda8/tmp
 https://ftp.gnu.org/gnu/glibc/ (newest release) --> /mnt/sda8/tmp
